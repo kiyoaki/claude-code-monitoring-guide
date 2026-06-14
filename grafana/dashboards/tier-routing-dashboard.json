@@ -1,0 +1,126 @@
+{
+  "title": "Claude Code - Tier Routing",
+  "uid": "cc-tier-routing",
+  "tags": ["claude-code", "orchestrator"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "Tokens by tier (model x effort x source, selected range)",
+      "description": "Tier mapping: haiku=Explore, sonnet/medium=worker-standard, opus/high=worker-deep, opus/max subagent=worker-critical, opus/xhigh main=orchestrator lead (Fable 5 retired 2026-06-13; tiers now separated by effort). Custom agent names are redacted to 'custom' by Claude Code, so tiers are identified by model+effort+query_source.",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum by (model, effort, query_source, type) (increase(claude_code_token_usage_tokens_total[$__range]))",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "piechart",
+      "title": "Token share by tier (selected range)",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum by (model, effort, query_source) (increase(claude_code_token_usage_tokens_total[$__range]))",
+          "legendFormat": "{{model}} / {{effort}} / {{query_source}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Token rate by tier",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 9 },
+      "targets": [
+        {
+          "expr": "sum by (model, effort, query_source) (rate(claude_code_token_usage_tokens_total[5m]))",
+          "legendFormat": "{{model}} / {{effort}} / {{query_source}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Estimated cost (USD) by tier",
+      "description": "On Max plan this is a local USD estimate, not billed amount. Useful as a relative weight across tiers.",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 9 },
+      "targets": [
+        {
+          "expr": "sum by (model, effort, query_source) (increase(claude_code_cost_usage_USD_total[1h]))",
+          "legendFormat": "{{model}} / {{effort}} / {{query_source}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Tokens by type (cache efficiency)",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 18 },
+      "targets": [
+        {
+          "expr": "sum by (type) (rate(claude_code_token_usage_tokens_total[5m]))",
+          "legendFormat": "{{type}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Tokens by run mode (orchestrator vs normal)",
+      "description": "run_mode label is set only when launching with OTEL_RESOURCE_ATTRIBUTES=run.mode=orchestrator. Series without the label are normal sessions.",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 27 },
+      "targets": [
+        {
+          "expr": "sum by (run_mode) (rate(claude_code_token_usage_tokens_total[5m]))",
+          "legendFormat": "{{run_mode}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Tokens by session (selected range)",
+      "description": "Compare orchestrator sessions vs normal/ultracode sessions for A/B evaluation.",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 18 },
+      "targets": [
+        {
+          "expr": "sum by (session_id) (increase(claude_code_token_usage_tokens_total[$__range]))",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } },
+        { "id": "sortBy", "options": { "sort": [{ "field": "Value", "desc": true }] } }
+      ]
+    }
+  ]
+}
