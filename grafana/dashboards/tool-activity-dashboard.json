@@ -1,0 +1,233 @@
+{
+  "title": "Claude Code - Tool Activity",
+  "uid": "cc-tool-activity",
+  "tags": ["claude-code", "tools"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "ds",
+        "type": "datasource",
+        "query": "loki",
+        "current": { "text": "Loki", "value": "claude-code-loki" },
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Tool calls (range)",
+      "description": "From the claude_code.tool_result OTEL log event. Populates from NEW Claude Code sessions started after OTEL_LOGS_EXPORTER=otlp.",
+      "datasource": { "type": "loki", "uid": "claude-code-loki" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "claude-code-loki" },
+          "expr": "sum(count_over_time({service_name=\"claude-code\"} | event_name=~\".*tool_result.*\" [$__range]))",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Tool failures (range)",
+      "description": "tool_result events with success=false.",
+      "datasource": { "type": "loki", "uid": "claude-code-loki" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "claude-code-loki" },
+          "expr": "sum(count_over_time({service_name=\"claude-code\"} | event_name=~\".*tool_result.*\" | success=\"false\" [$__range]))",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Permission rejections (range)",
+      "description": "claude_code.tool_decision events where the permission decision was reject/deny.",
+      "datasource": { "type": "loki", "uid": "claude-code-loki" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "claude-code-loki" },
+          "expr": "sum(count_over_time({service_name=\"claude-code\"} | event_name=~\".*tool_decision.*\" | decision=~\"reject|deny\" [$__range]))",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "User prompts (range)",
+      "description": "claude_code.user_prompt events.",
+      "datasource": { "type": "loki", "uid": "claude-code-loki" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "claude-code-loki" },
+          "expr": "sum(count_over_time({service_name=\"claude-code\"} | event_name=~\".*user_prompt.*\" [$__range]))",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Tool calls by tool",
+      "description": "Per-tool call rate across all tools (Read/Bash/Edit/Grep/Task/MCP...). The whole-of-tool-calls view.",
+      "datasource": { "type": "loki", "uid": "claude-code-loki" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "claude-code-loki" },
+          "expr": "sum by (tool_name) (count_over_time({service_name=\"claude-code\"} | tool_name != \"\" | event_name=~\".*tool_result.*\" [$__auto]))",
+          "legendFormat": "{{tool_name}}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Top tools (range)",
+      "description": "Total calls per tool in the selected range.",
+      "datasource": { "type": "loki", "uid": "claude-code-loki" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "claude-code-loki" },
+          "expr": "sum by (tool_name) (count_over_time({service_name=\"claude-code\"} | tool_name != \"\" | event_name=~\".*tool_result.*\" [$__range]))",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        { "id": "sortBy", "options": { "sort": [{ "field": "Value", "desc": true }] } }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Tool success vs failure",
+      "description": "tool_result events split by success.",
+      "datasource": { "type": "loki", "uid": "claude-code-loki" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "claude-code-loki" },
+          "expr": "sum by (success) (count_over_time({service_name=\"claude-code\"} | event_name=~\".*tool_result.*\" [$__auto]))",
+          "legendFormat": "success={{success}}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Permission decisions by tool",
+      "description": "claude_code.tool_decision events: the harness's own accept/reject per tool (the real permission deny rate across all tools).",
+      "datasource": { "type": "loki", "uid": "claude-code-loki" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "claude-code-loki" },
+          "expr": "sum by (tool_name, decision) (count_over_time({service_name=\"claude-code\"} | event_name=~\".*tool_decision.*\" [$__auto]))",
+          "legendFormat": "{{tool_name}} / {{decision}}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Tool duration p95 by tool (ms)",
+      "description": "95th percentile of duration_ms from tool_result events. Reveals the slowest tools.",
+      "datasource": { "type": "loki", "uid": "claude-code-loki" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "claude-code-loki" },
+          "expr": "quantile_over_time(0.95, {service_name=\"claude-code\"} | event_name=~\".*tool_result.*\" | unwrap duration_ms [$__auto]) by (tool_name)",
+          "legendFormat": "{{tool_name}}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "API errors",
+      "description": "claude_code.api_error events over time.",
+      "datasource": { "type": "loki", "uid": "claude-code-loki" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "claude-code-loki" },
+          "expr": "sum(count_over_time({service_name=\"claude-code\"} | event_name=~\".*api_error.*\" [$__auto]))",
+          "legendFormat": "api_error",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "logs",
+      "title": "Raw events (confirm field names here)",
+      "description": "Live tail of all Claude Code OTEL log events. Use this to read the actual structured-metadata field names (event_name, tool_name, success, duration_ms, decision, ...) and refine the queries above if a panel stays empty.",
+      "datasource": { "type": "loki", "uid": "claude-code-loki" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 28 },
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "claude-code-loki" },
+          "expr": "{service_name=\"claude-code\"}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}
